@@ -16,6 +16,7 @@ class Boxplot(TypedDict):
     box: Box
     median: float
     average: float
+    name: str
 
 
 # Reads in fastq files come in pairs of four
@@ -187,5 +188,6 @@ def calculate_boxplot(sequence_id: str, sequence: str, optional_sequence_id: str
         },
         median=median,
         average=average,
+        name=sequence_id,
     )
 
