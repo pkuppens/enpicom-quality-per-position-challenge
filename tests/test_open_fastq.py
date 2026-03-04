@@ -1,7 +1,5 @@
 """Tests for open_fastq_file: verify plain and gzipped FASTQ files open and yield identical content."""
 
-import pytest
-
 from quality_per_position import open_fastq_file
 
 # Fixture paths relative to project root
@@ -22,7 +20,9 @@ def test_open_plain_fastq_reads_four_lines():
     assert lines[0].startswith("@")
     assert lines[1]  # sequence
     assert lines[2].startswith("+")
-    assert len(lines[3].strip()) == len(lines[1].strip())  # quality same length as sequence
+    assert len(lines[3].strip()) == len(
+        lines[1].strip()
+    )  # quality same length as sequence
 
 
 def test_open_gzipped_fastq_reads_four_lines():

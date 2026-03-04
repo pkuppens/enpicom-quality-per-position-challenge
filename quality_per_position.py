@@ -1,5 +1,7 @@
 import gzip
+import math
 from typing import Iterator, TextIO, TypedDict
+
 
 class CenterLine(TypedDict):
     min: float
@@ -102,12 +104,20 @@ def quality_per_position_boxplot_data(fastq_filename: str) -> list[Boxplot]:
             )
 
             # Now we can calculate the boxplot for this record
-            boxplot = calculate_boxplot(sequence_id, sequence, optional_sequence_id, quality_score_bytes)
+            boxplot = calculate_boxplot(
+                sequence_id, sequence, optional_sequence_id, quality_score_bytes
+            )
             boxplots.append(boxplot)
 
     return boxplots
 
-def calculate_boxplot(sequence_id: str, sequence: str, optional_sequence_id: str, quality_score_bytes: bytes) -> Boxplot:
+
+def calculate_boxplot(
+    sequence_id: str,
+    sequence: str,
+    optional_sequence_id: str,
+    quality_score_bytes: bytes,
+) -> Boxplot:
     """Calculate the boxplot for a FASTQ record.
 
     Args:
@@ -122,55 +132,33 @@ def calculate_boxplot(sequence_id: str, sequence: str, optional_sequence_id: str
     # The quality scores are in the bytes iterable
     n_positions = len(quality_score_bytes)
 
-    # We'll use a histogram, since the score values are discrete and bounded by 0-255
-    # There is a lower upperbound, but that will not be important for the boxplot calculation
-
-    histogram = [0] * 256
-
-    for q in quality_score_bytes:
-        histogram[q] += 1
-    total_sum = sum(quality_score_bytes)  # could be done in the loop, but this is more readable, and Python may have this optimized
-
-    # quick win:
-    average = total_sum / n_positions
+    average = float(sum(quality_score_bytes)) / n_positions
 
     # Define virtual indices for the percentiles
     virtual_index = [p * (n_positions - 1) for p in [0.25, 0.5, 0.75]]
 
-    # We'll now iterate over the histogram, determining lower index and upper index for the percentiles,
-    # where the cumulative sum exceeds the virtual index in the population (not histogram index)
+    quality_score_bytes_sorted = sorted(quality_score_bytes)
 
-    # first non-zero index in the histogram, which is also the centerLine.min
-    index = next(i for i, count in enumerate(histogram) if count > 0)
-    cumulative_sum = histogram[index]
-    centerLine_min = float(index)  # we expect float type
+    centerLine_min = float(quality_score_bytes_sorted[0])
+    centerLine_max = float(quality_score_bytes_sorted[-1])
 
     # iterate over the virtual indices, and determine the lower and upper index for the percentiles
     percentiles = []
     for p in virtual_index:
-        lower_index = index
-        while cumulative_sum < p:
-            cumulative_sum += histogram[index]
-            index += 1
+        lower_index = math.floor(p)
+        upper_index = lower_index + 1
 
-        # We've found where the cumulative sum exceeds the virtual index
-        # We have two cases: we had a histogram step of 1, or we had a step of more than 1
-        if histogram[index-1] == 1:
-            # We need to interpolate between the two values
-            fraction = (p - lower_index) / (index - lower_index)
-            percentile = fraction * histogram[lower_index] + (1 - fraction) * histogram[index]
+        if upper_index == n_positions:
+            # theoretically on low samples or high percentile, we would exceed the array bounds
+            percentile = float(quality_score_bytes_sorted[lower_index])
         else:
-            # Both the upper and lower bound are in this percentile, then we only need a cast to float
-            percentile = float(histogram[index-1])
+            # We need to interpolate between the two values
+            fraction = p - lower_index
+            percentile = (1.0 - fraction) * quality_score_bytes_sorted[
+                lower_index
+            ] + fraction * quality_score_bytes_sorted[upper_index]
 
         percentiles.append(percentile)
-
-    # We're done with the percentiles, now we need to calculate the maximum, that is the index where
-    # we find the index where the cumulative sum reaches the number of positions
-    while cumulative_sum < n_positions:
-        cumulative_sum += histogram[index]
-        index += 1
-    centerLine_max = float(index)
 
     # We're done with the centerLine, now we need to calculate the box
     q1 = percentiles[0]
@@ -190,4 +178,3 @@ def calculate_boxplot(sequence_id: str, sequence: str, optional_sequence_id: str
         average=average,
         name=sequence_id,
     )
-

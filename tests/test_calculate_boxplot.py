@@ -1,7 +1,5 @@
 """Tests for calculate_boxplot: verify boxplot statistics from quality scores."""
 
-import pytest
-
 from quality_per_position import calculate_boxplot
 
 
@@ -51,12 +49,20 @@ def test_calculate_boxplot_min_max_bounds():
     quality_bytes = bytes([5, 10, 15, 20, 25])
     result = calculate_boxplot("@seq1", "ACGTA", "+", quality_bytes)
     assert result["centerLine"]["min"] == 5.0
-    assert result["centerLine"]["max"] >= 20.0  # implementation detail for max
+    assert result["box"]["q1"] == 10.0
+    assert result["median"] == 15.0
+    assert result["box"]["q3"] == 20.0
+    assert result["centerLine"]["max"] == 25.0
+    assert result["average"] == 15.0
 
 
-def test_calculate_boxplot_ignores_sequence_id_fields():
-    """Sequence id, sequence, and optional id do not affect the boxplot values."""
-    quality_bytes = bytes([50, 50])
-    r1 = calculate_boxplot("ignore1", "XX", "ignore2", quality_bytes)
-    r2 = calculate_boxplot("other", "YY", "other+", quality_bytes)
-    assert r1 == r2
+def test_calculate_boxplot_linear_interpolation():
+    """Check linear interpolation between adjacent sorted values."""
+    quality_bytes = bytes([0, 100])
+    result = calculate_boxplot("@linear_interpolation", "ACGTA", "+", quality_bytes)
+    assert result["centerLine"]["min"] == 0.0
+    assert result["box"]["q1"] == 25.0
+    assert result["median"] == 50.0
+    assert result["box"]["q3"] == 75.0
+    assert result["centerLine"]["max"] == 100.0
+    assert result["average"] == 50.0

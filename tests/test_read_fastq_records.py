@@ -2,7 +2,6 @@
 
 import io
 
-import pytest
 
 from quality_per_position import LINES_PER_READ, read_fastq_records
 

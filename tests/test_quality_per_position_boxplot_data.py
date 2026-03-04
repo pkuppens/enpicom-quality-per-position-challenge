@@ -1,7 +1,5 @@
 """Tests for quality_per_position_boxplot_data: end-to-end integration."""
 
-import pytest
-
 from quality_per_position import quality_per_position_boxplot_data
 
 # Fixture path relative to project root
