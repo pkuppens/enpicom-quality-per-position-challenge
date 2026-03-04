@@ -169,7 +169,7 @@ def calculate_boxplot(sequence_id: str, sequence: str, optional_sequence_id: str
     while cumulative_sum < n_positions:
         cumulative_sum += histogram[index]
         index += 1
-    centerLine_max = float(index-1)
+    centerLine_max = float(index)
 
     # We're done with the centerLine, now we need to calculate the box
     q1 = percentiles[0]
