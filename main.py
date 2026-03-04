@@ -11,7 +11,7 @@ def main():
 
 
 if __name__ == "__main__":
-    import resource
+    # import resource
     import sys
     import time
 
@@ -20,8 +20,8 @@ if __name__ == "__main__":
     main()
 
     elapsed = time.perf_counter() - t0
-    peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss  # KiB on Linux
+    # peak_kb = resource.getrusage(resource.RUSAGE_SELF).ru_maxrss  # KiB on Linux
 
     print("\n--- profile ---", file=sys.stderr)
     print(f"runtime:      {elapsed:.3f}s", file=sys.stderr)
-    print(f"peak memory:  {peak_kb / 1024:.2f} MiB", file=sys.stderr)
+    # print(f"peak memory:  {peak_kb / 1024:.2f} MiB", file=sys.stderr)
