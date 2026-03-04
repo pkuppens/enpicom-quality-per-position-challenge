@@ -28,3 +28,5 @@ Create a function to handle both cases and return a single return type: TextIO
 
 5. Extract ID, quality string - convert quality string to bytes,
 because we'll use a histogram for efficiency
+
+6. Never mind, the histogram solution was too complex for little gain, I rewrote it to the more common sorted approach.
