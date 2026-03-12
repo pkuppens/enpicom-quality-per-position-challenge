@@ -26,7 +26,7 @@ def test_open_plain_fastq_reads_four_lines():
 
 
 def test_open_gzipped_fastq_reads_four_lines():
-    """Gzipped .fastq.gz file opens and yields at least four readable lines."""
+    """Gzipped .fq.gz file opens and yields at least four readable lines."""
     lines = read_first_four_lines(FASTQ_GZ)
     assert len(lines) == 4
     assert lines[0].startswith("@")

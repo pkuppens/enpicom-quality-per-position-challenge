@@ -52,9 +52,27 @@ def read_fastq_records(stream: TextIO) -> Iterator[list[str]]:
         yield record
 
 
-def _parse_quality_scores(quality_string: str) -> list[float]:
-    """Convert quality string to list of scores (Sanger/Phred+33)."""
-    return [float(ord(c) - SANGER_ASCII_QUALITY_SCORE_OFFSET) for c in quality_string]
+def _parse_quality_scores(quality_string: str, sequence_length: int) -> list[float]:
+    """Convert quality string to list of scores (Sanger/Phred+33).
+
+    Raises:
+        ValueError: If quality length != sequence length or if any char has ASCII < 33.
+    """
+    if len(quality_string) != sequence_length:
+        raise ValueError(
+            f"Quality string length ({len(quality_string)}) does not match "
+            f"sequence length ({sequence_length})"
+        )
+    scores = []
+    for char in quality_string:
+        q = ord(char) - SANGER_ASCII_QUALITY_SCORE_OFFSET
+        if q < 0:
+            raise ValueError(
+                f"Invalid quality character (ASCII {ord(char)}) at position {len(scores)}; "
+                "Sanger encoding requires ASCII >= 33"
+            )
+        scores.append(float(q))
+    return scores
 
 
 def _compute_position_stats(scores_at_position: list[float], position: int) -> Boxplot:
@@ -95,7 +113,7 @@ def quality_per_position_boxplot_data(fastq_filename: str) -> list[Boxplot]:
         for record in read_fastq_records(stream):
             sequence = record[SEQUENCE].strip()
             quality_string = record[QUALITY_STRING].strip()
-            scores = _parse_quality_scores(quality_string)
+            scores = _parse_quality_scores(quality_string, len(sequence))
             for i, score in enumerate(scores):
                 position_to_scores[i].append(score)
     if not position_to_scores:

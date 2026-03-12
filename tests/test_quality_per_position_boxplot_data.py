@@ -97,6 +97,38 @@ def test_single_read_single_position():
         os.unlink(path)
 
 
+def test_quality_length_mismatch_raises():
+    """Malformed record (quality length != sequence length) raises ValueError."""
+    import tempfile
+    import os
+    content = "@id\nAC\n+\nI\n"  # sequence len 2, quality len 1
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".fq", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        import pytest
+        with pytest.raises(ValueError, match="does not match"):
+            quality_per_position_boxplot_data(path)
+    finally:
+        os.unlink(path)
+
+
+def test_invalid_quality_char_raises():
+    """Invalid quality character (ASCII < 33) raises ValueError."""
+    import tempfile
+    import os
+    content = "@id\nAAA\n+\nA A\n"  # space (32) in middle; gives score -1
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".fq", delete=False) as f:
+        f.write(content)
+        path = f.name
+    try:
+        import pytest
+        with pytest.raises(ValueError, match="Invalid quality"):
+            quality_per_position_boxplot_data(path)
+    finally:
+        os.unlink(path)
+
+
 def test_later_read_longer_than_earlier():
     """Reads with increasing length extend the position map correctly."""
     import tempfile
