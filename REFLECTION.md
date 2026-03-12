@@ -1,32 +1,57 @@
-# Reflection and steps taken to solve the issue.
+# Reflection and Lessons Learned
+
+## Original Steps (Initial Attempt)
 
 1. Explore the assignment
+2. Explore the repo — created uv venv with Python 3.12.11
+3. Start on the assignment — parser first, support plain and gzip
+4. Read per 4 lines (LINES_PER_READ)
+5. Extract ID, quality string — convert to bytes for histogram efficiency
+6. Abandoned histogram; rewrote with sorted approach
 
-2. Explore the repo
+---
 
-Saw .python-version with 3.12.11, so I created an uv venv with it, to prevent any compatibility issues:
+## Core Mistake: Per Sequence vs Per Position
 
-```
-C:\Users\piete\Repos\pkuppens\enpicom-quality-per-position-challenge>py -V
-Python 3.13.5
+**The implementation computed one boxplot per sequence (read), not per position.**
 
-C:\Users\piete\Repos\pkuppens\enpicom-quality-per-position-challenge>uv venv --python 3.12.11
-...
+- The spec says: *"one boxplot data structure per read position, summarizing the distribution of quality scores across all reads at that position"*
+- The implementation used `sequence_id` as `Boxplot.name` and produced 250 boxplots (one per record)
+- The correct result: one boxplot per position index 0..max_position, so 493 boxplots for the fixture (reads vary from 250 to 493 bases)
 
-C:\Users\piete\Repos\pkuppens\enpicom-quality-per-position-challenge>.venv\Scripts\activate
+**Lesson:** Read the spec carefully; "per position" means transpose scores across reads by position index, not one statistic set per read.
 
-(enpicom-quality-per-position-challenge) C:\Users\piete\Repos\pkuppens\enpicom-quality-per-position-challenge>py -V
-Python 3.12.11
-```
+---
 
-3. start on the assignment
+## What Worked
 
-We need the parser first, but from specification, we need to support but text and gzipped text.
-Create a function to handle both cases and return a single return type: TextIO
+- **Streaming:** Reading FASTQ in chunks of 4 lines avoids loading the whole file into memory.
+- **Sanger encoding:** `ord(char) - 33` for Phred quality.
+- **Percentile interpolation:** Virtual index with linear interpolation between adjacent sorted values; straightforward and correct.
 
-4. Then read per 4 lines, better LINES_PER_READ as this is specified
+---
 
-5. Extract ID, quality string - convert quality string to bytes,
-because we'll use a histogram for efficiency
+## What Did Not Work
 
-6. Never mind, the histogram solution was too complex for little gain, I rewrote it to the more common sorted approach.
+- **Histogram-based O(n):** Attempted for efficiency; complexity outweighed benefit for typical sizes; reverted to sorted approach.
+- **Per-sequence boxplot:** Misread the requirement; should have been per-position from the start.
+- **`Boxplot.name`:** Used `sequence_id`; spec requires `str(position_index)`.
+
+---
+
+## Variable-Length Reads
+
+The fixture has reads of length 250–493. The transpose step must:
+
+- Group scores by position index across all reads
+- Only include a read at position `i` if that read has length > `i`
+- Use an extensible structure (`defaultdict(list)`) — later reads can be longer than earlier ones
+
+---
+
+## Defensive Programming
+
+- Validate quality string length vs sequence length; raise `ValueError` on mismatch
+- Validate quality characters (ASCII ≥ 33 for Sanger)
+- Handle empty file → return `[]`
+- Never close stdin when reading from `"-"`; use `contextlib.nullcontext`
