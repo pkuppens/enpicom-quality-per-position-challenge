@@ -61,30 +61,25 @@ def read_fastq_records(stream: TextIO) -> Iterator[list[str]]:
         yield record
 
 
-def _parse_quality_scores(quality_string: str, sequence_length: int) -> list[float]:
-    """Convert quality string to list of scores (Sanger/Phred+33).
+def _parse_quality_scores(quality_string: str) -> list[int]:
+    """Convert quality string to list of integer scores (Sanger/Phred+33).
 
-    Raises:
-        ValueError: If quality length != sequence length or if any char has ASCII < 33.
+    Uses a single allocation (list comprehension) instead of repeated append.
+    No per-element function calls, so it is faster than an append loop or map.
+
+    Assumes the quality string is valid: length matches the sequence line and all
+    characters have ASCII >= 33 (Sanger encoding). Caller must validate input.
+
+    Args:
+        quality_string: Raw quality line from FASTQ (after strip).
+
+    Returns:
+        list[int]: Integer quality scores (one per base, no conversion to float).
     """
-    if len(quality_string) != sequence_length:
-        raise ValueError(
-            f"Quality string length ({len(quality_string)}) does not match "
-            f"sequence length ({sequence_length})"
-        )
-    scores = []
-    for char in quality_string:
-        q = ord(char) - SANGER_ASCII_QUALITY_SCORE_OFFSET
-        if q < 0:
-            raise ValueError(
-                f"Invalid quality character (ASCII {ord(char)}) at position {len(scores)}; "
-                "Sanger encoding requires ASCII >= 33"
-            )
-        scores.append(float(q))
-    return scores
+    return [ord(c) - SANGER_ASCII_QUALITY_SCORE_OFFSET for c in quality_string]
 
 
-def _compute_position_stats(scores_at_position: list[float], position: int) -> Boxplot:
+def _compute_position_stats(scores_at_position: list[int], position: int) -> Boxplot:
     """Compute boxplot statistics for a single position across all reads."""
     n = len(scores_at_position)
     if n == 0:
@@ -117,12 +112,12 @@ def _compute_position_stats(scores_at_position: list[float], position: int) -> B
 
 def quality_per_position_boxplot_data(fastq_filename: str) -> list[Boxplot]:
     """Read FASTQ file or stdin ('-') and return one boxplot per read position."""
-    position_to_scores: dict[int, list[float]] = defaultdict(list)
+    position_to_scores: dict[int, list[int]] = defaultdict(list)
     with open_fastq_stream(fastq_filename) as stream:
         for record in read_fastq_records(stream):
             sequence = record[SEQUENCE].strip()
             quality_string = record[QUALITY_STRING].strip()
-            scores = _parse_quality_scores(quality_string, len(sequence))
+            scores = _parse_quality_scores(quality_string)
             for i, score in enumerate(scores):
                 position_to_scores[i].append(score)
     if not position_to_scores:
