@@ -97,6 +97,17 @@ def test_single_read_single_position():
         os.unlink(path)
 
 
+def test_stdin_via_dash(monkeypatch):
+    """Reading from '-' uses stdin; verify result from mocked stdin."""
+    import io
+    content = "@id\nAC\n+\nII\n"  # 2 positions, score 40 each
+    monkeypatch.setattr("sys.stdin", io.StringIO(content))
+    result = quality_per_position_boxplot_data("-")
+    assert len(result) == 2
+    assert result[0]["name"] == "0"
+    assert result[1]["name"] == "1"
+
+
 def test_quality_length_mismatch_raises():
     """Malformed record (quality length != sequence length) raises ValueError."""
     import tempfile

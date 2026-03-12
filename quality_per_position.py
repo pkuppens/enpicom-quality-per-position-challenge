@@ -4,8 +4,10 @@ Reads a FASTQ file and returns boxplot data per read position, summarizing
 the distribution of quality scores across all reads at each position.
 """
 
+import contextlib
 import gzip
 import math
+import sys
 from collections import defaultdict
 from typing import Iterator, TextIO, TypedDict
 
@@ -36,11 +38,18 @@ QUALITY_STRING = 3
 SANGER_ASCII_QUALITY_SCORE_OFFSET = 33
 
 
-def open_fastq_file(filename: str) -> TextIO:
-    """Open a FASTQ file (plain or gzip). Returns a file-like object."""
+def open_fastq_stream(filename: str):
+    """Open FASTQ stream: file path or '-' for stdin. Never closes stdin."""
+    if filename == "-":
+        return contextlib.nullcontext(sys.stdin)
     if filename.endswith(".gz"):
         return gzip.open(filename, "rt", encoding="utf-8")
     return open(filename, "r", encoding="utf-8")
+
+
+def open_fastq_file(filename: str):
+    """Open FASTQ file or stdin ('-'). Returns context manager; never closes stdin."""
+    return open_fastq_stream(filename)
 
 
 def read_fastq_records(stream: TextIO) -> Iterator[list[str]]:
@@ -107,9 +116,9 @@ def _compute_position_stats(scores_at_position: list[float], position: int) -> B
 
 
 def quality_per_position_boxplot_data(fastq_filename: str) -> list[Boxplot]:
-    """Read a FASTQ file and return one boxplot per read position."""
+    """Read FASTQ file or stdin ('-') and return one boxplot per read position."""
     position_to_scores: dict[int, list[float]] = defaultdict(list)
-    with open_fastq_file(fastq_filename) as stream:
+    with open_fastq_stream(fastq_filename) as stream:
         for record in read_fastq_records(stream):
             sequence = record[SEQUENCE].strip()
             quality_string = record[QUALITY_STRING].strip()
