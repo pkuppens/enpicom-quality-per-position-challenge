@@ -1,6 +1,7 @@
-.venv/
+.venv*/
 *.pyc
 target/
 __pycache__/
 .claude/
 .vscode/
+tmp/

@@ -30,3 +30,9 @@ Project-level guidance for AI agents working on this codebase. May be migrated t
 
 - Both `.fq` and `.fastq` (and gzipped variants) are valid.
 - `Boxplot` TypedDict includes `name: str`; upstream stub omitted it.
+
+### Rust/Mojo Benchmark (Issue)
+
+- Python, Rust, and Mojo implementations must be **identical in pseudo-code**.
+- **Rust and Mojo run as native binaries** (not Python extensions); use language-specific optimizations.
+- Canonical spec: `docs/quality-per-position-algorithm-spec.md`. Binaries read path from argv, write JSON to stdout.
