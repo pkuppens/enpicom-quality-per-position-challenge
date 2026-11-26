@@ -5,6 +5,7 @@ from quality_per_position import quality_per_position_boxplot_data
 
 
 def main():
+    # Default: fixtures/test.fq; pass "-" to read from stdin (e.g. cat file.fq | python main.py -)
     fastq_filename = "fixtures/test.fq" if len(sys.argv) == 1 else sys.argv[1]
     boxplots = quality_per_position_boxplot_data(fastq_filename)
     pprint(boxplots)
